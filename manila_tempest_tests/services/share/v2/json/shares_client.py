@@ -436,6 +436,10 @@ class SharesV2Client(rest_client.RestClient):
             return self._is_resource_deleted(
                 self.get_share_backup, kwargs.get("backup_id"),
                 "share_backup")
+        elif "qos_type_id" in kwargs:
+            return self._is_resource_deleted(
+                self.get_qos_type, kwargs.get("qos_type_id"),
+                "qos_type")
         else:
             raise share_exceptions.InvalidResource(
                 message=str(kwargs))
@@ -2672,5 +2676,89 @@ class SharesV2Client(rest_client.RestClient):
 
         resp, body = self.delete(uri, version=version)
 
+        self.expected_success(204, resp.status)
+        return rest_client.ResponseBody(resp, body)
+
+#################
+
+    def create_qos_type(self, name,
+                        version=LATEST_MICROVERSION, **kwargs):
+        post_body = {
+            'name': name,
+            'specs': kwargs.get('specs') or {},
+        }
+        if kwargs.get('description'):
+            post_body['description'] = kwargs.get('description')
+        post_body = json.dumps({'qos_type': post_body})
+        resp, body = self.post('qos-types', post_body, version=version)
+        self.expected_success(200, resp.status)
+        body = json.loads(body)
+        return rest_client.ResponseBody(resp, body)
+
+    def update_qos_type(self, qos_type_id,
+                        description=None,
+                        version=LATEST_MICROVERSION):
+        post_body = {}
+        if description is not None:
+            post_body.update({"description": description})
+        post_body = json.dumps({'qos_type': post_body})
+        resp, body = self.put("qos-types/%s" % qos_type_id, post_body,
+                              version=version)
+        self.expected_success(200, resp.status)
+        body = json.loads(body)
+        return rest_client.ResponseBody(resp, body)
+
+    def delete_qos_type(self, qos_type_id, version=LATEST_MICROVERSION):
+        resp, body = self.delete("qos-types/%s" % qos_type_id, version=version)
+        self.expected_success(204, resp.status)
+        return rest_client.ResponseBody(resp, body)
+
+    def get_qos_type(self, qos_type_id, version=LATEST_MICROVERSION):
+        resp, body = self.get("qos-types/%s" % qos_type_id, version=version)
+        self.expected_success(200, resp.status)
+        body = json.loads(body)
+        return rest_client.ResponseBody(resp, body)
+
+    def create_qos_type_specs(self, qos_type_id, specs,
+                              version=LATEST_MICROVERSION):
+        url = "qos-types/%s/specs" % qos_type_id
+        post_body = json.dumps({'specs': specs})
+        resp, body = self.post(url, post_body, version=version)
+        self.expected_success(200, resp.status)
+        body = json.loads(body)
+        return rest_client.ResponseBody(resp, body)
+
+    def get_qos_type_spec(self, qos_type_id, spec_name,
+                          version=LATEST_MICROVERSION):
+        uri = "qos-types/%s/specs/%s" % (qos_type_id, spec_name)
+        resp, body = self.get(uri, version=version)
+        self.expected_success(200, resp.status)
+        body = json.loads(body)
+        return rest_client.ResponseBody(resp, body)
+
+    def get_qos_type_specs(self, qos_type_id, params=None,
+                           version=LATEST_MICROVERSION):
+        uri = "qos-types/%s/specs" % qos_type_id
+        if params is not None:
+            uri += '?%s' % parse.urlencode(params)
+        resp, body = self.get(uri, version=version)
+        self.expected_success(200, resp.status)
+        body = json.loads(body)
+        return rest_client.ResponseBody(resp, body)
+
+    def update_qos_type_spec(self, qos_type_id, spec_name,
+                             spec_value, version=LATEST_MICROVERSION):
+        uri = "qos-types/%s/specs/%s" % (qos_type_id, spec_name)
+        spec = {spec_name: spec_value}
+        post_body = json.dumps(spec)
+        resp, body = self.put(uri, post_body, version=version)
+        self.expected_success(200, resp.status)
+        body = json.loads(body)
+        return rest_client.ResponseBody(resp, body)
+
+    def delete_qos_type_spec(self, qos_type_id, spec_name,
+                             version=LATEST_MICROVERSION):
+        uri = "qos-types/%s/specs/%s" % (qos_type_id, spec_name)
+        resp, body = self.delete(uri, version=version)
         self.expected_success(204, resp.status)
         return rest_client.ResponseBody(resp, body)

@@ -980,6 +980,10 @@ class BaseSharesTest(test.BaseTestCase):
                             client.reset_quotas(res_id, user_id=user_id)
                         elif res["type"] == "resource_lock":
                             client.delete_resource_lock(res_id)
+                        elif res["type"] == "qos_type":
+                            client.delete_qos_type(res_id)
+                            client.wait_for_resource_deletion(
+                                qos_type_id=res_id)
                         else:
                             LOG.warning("Provided unsupported resource type "
                                         "for cleanup '%s'. Skipping.",
@@ -1275,6 +1279,27 @@ class BaseSharesAdminTest(BaseSharesTest):
         waiters.wait_for_resource_status(
             self.shares_v2_client, share['id'], "error")
         return waiters.wait_for_message(self.shares_v2_client, share['id'])
+
+    @classmethod
+    def create_qos_type(cls, name=None, client=None, cleanup_in_class=True,
+                        specs=None, **kwargs):
+        name = name or data_utils.rand_name(
+            cls.__class__.__name__ + 'qos-type')
+        client = client or cls.admin_shares_v2_client
+        specs = specs if specs else {}
+        qos_type = client.create_qos_type(name,
+                                          specs=specs,
+                                          **kwargs)['qos_type']
+        resource = {
+            "type": "qos_type",
+            "id": qos_type["id"],
+            "client": client,
+        }
+        if cleanup_in_class:
+            cls.class_resources.insert(0, resource)
+        else:
+            cls.method_resources.insert(0, resource)
+        return qos_type
 
 
 class BaseSharesMixedTest(BaseSharesAdminTest):
