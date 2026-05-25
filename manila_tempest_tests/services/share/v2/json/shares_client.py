@@ -1827,6 +1827,15 @@ class SharesV2Client(rest_client.RestClient):
 
     def migration_get_progress(self, share_id, version=LATEST_MICROVERSION,
                                action_name='migration_get_progress'):
+        if utils.is_microversion_ge(
+                version,
+                constants.SHARE_MIGRATION_PROGRESS_GET_VERSION):
+            resp, body = self.get(
+                'shares/%s/migration-progress' % share_id,
+                version=version)
+            body = json.loads(body)
+            return rest_client.ResponseBody(resp, body)
+
         post_body = {
             action_name: None,
         }
