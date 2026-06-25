@@ -50,6 +50,9 @@ class SnapshotExportLocationsNegativeTest(base.BaseSharesMixedTest):
             'snapshot_support': True,
             'mount_snapshot_support': True,
         }
+        if (CONF.share.capability_snapshot_inherit_share_access ==
+                "required_with_mount_snapshot"):
+            extra_specs['snapshot_inherit_share_access_support'] = True
         cls.share_type = cls.create_share_type(extra_specs=extra_specs)
         cls.share_type_id = cls.share_type['id']
         # create share

@@ -39,6 +39,11 @@ class SnapshotIpRulesForNFSNegativeTest(
             raise cls.skipException('Snapshot tests are disabled.')
         if not CONF.share.run_mount_snapshot_tests:
             raise cls.skipException('Mountable snapshots tests are disabled.')
+        if (CONF.share.capability_snapshot_inherit_share_access ==
+                "required_with_mount_snapshot"):
+            raise cls.skipException(
+                "Independent snapshot access rules are disabled when "
+                "'snapshot_inherit_share_access_support' is required.")
         if not (cls.protocol in CONF.share.enable_protocols and
                 cls.protocol in CONF.share.enable_ip_rules_for_protocols):
             msg = "IP rule tests for %s protocol are disabled." % cls.protocol
@@ -125,3 +130,58 @@ class SnapshotIpRulesForNFSNegativeTest(
         self.assertRaises(lib_exc.NotFound,
                           self.shares_v2_client.delete_snapshot_access_rule,
                           self.snap['id'], rule['id'])
+
+
+@ddt.ddt
+class SnapshotInheritShareAccessNegativeTest(
+        base.BaseSharesMixedTest):
+    protocol = "nfs"
+
+    @classmethod
+    def skip_checks(cls):
+        super(SnapshotInheritShareAccessNegativeTest, cls).skip_checks()
+        if not CONF.share.run_snapshot_tests:
+            raise cls.skipException('Snapshot tests are disabled.')
+        if not CONF.share.run_mount_snapshot_tests:
+            raise cls.skipException('Mountable snapshots tests are disabled.')
+        if CONF.share.capability_snapshot_inherit_share_access == "disabled":
+            raise cls.skipException(
+                "Backend does not support snapshot_inherit_share_access.")
+        if not (cls.protocol in CONF.share.enable_protocols and
+                cls.protocol in CONF.share.enable_ip_rules_for_protocols):
+            msg = "IP rule tests for %s protocol are disabled." % cls.protocol
+            raise cls.skipException(msg)
+
+    @classmethod
+    def resource_setup(cls):
+        super(SnapshotInheritShareAccessNegativeTest, cls).resource_setup()
+        # create share type with the inherit-share-access capability
+        extra_specs = {
+            'snapshot_support': True,
+            'mount_snapshot_support': True,
+            'snapshot_inherit_share_access_support': True,
+        }
+        cls.share_type = cls.create_share_type(extra_specs=extra_specs)
+        cls.share_type_id = cls.share_type['id']
+        # create share
+        cls.share = cls.create_share(cls.protocol,
+                                     share_type_id=cls.share_type_id)
+        cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"])
+
+    @decorators.idempotent_id('5e611f30-8cfd-4b66-8cae-1687d45b7159')
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
+    def test_add_snapshot_access_rule_blocked(self):
+        # When snapshots inherit the parent share's access rules, the API
+        # must block adding access rules directly to a snapshot.
+        self.assertRaises(lib_exc.BadRequest,
+                          self.shares_v2_client.create_snapshot_access_rule,
+                          self.snap["id"], "ip", "1.1.1.1")
+
+    @decorators.idempotent_id('d98ed2e6-2090-4cee-90d9-e80e3213aebc')
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
+    def test_remove_snapshot_access_rule_blocked(self):
+        # When snapshots inherit the parent share's access rules, the API
+        # must block removing access rules directly from a snapshot.
+        self.assertRaises(lib_exc.BadRequest,
+                          self.shares_v2_client.delete_snapshot_access_rule,
+                          self.snap["id"], "fake-rule-id")

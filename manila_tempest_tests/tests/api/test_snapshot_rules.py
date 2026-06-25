@@ -18,6 +18,7 @@ from tempest import config
 from tempest.lib import decorators
 from testtools import testcase as tc
 
+from manila_tempest_tests.common import constants
 from manila_tempest_tests.common import waiters
 from manila_tempest_tests.tests.api import base
 from manila_tempest_tests import utils
@@ -78,6 +79,11 @@ class ShareSnapshotIpRulesForNFSTest(BaseShareSnapshotRulesTest):
             raise cls.skipException('Snapshot tests are disabled.')
         if not CONF.share.run_mount_snapshot_tests:
             raise cls.skipException('Mountable snapshots tests are disabled.')
+        if (CONF.share.capability_snapshot_inherit_share_access ==
+                "required_with_mount_snapshot"):
+            raise cls.skipException(
+                "Independent snapshot access rules are disabled when "
+                "'snapshot_inherit_share_access_support' is required.")
         if not (cls.protocol in CONF.share.enable_protocols and
                 cls.protocol in CONF.share.enable_ip_rules_for_protocols):
             msg = "IP rule tests for %s protocol are disabled." % cls.protocol
@@ -106,6 +112,11 @@ class ShareSnapshotUserRulesForCIFSTest(BaseShareSnapshotRulesTest):
         super(ShareSnapshotUserRulesForCIFSTest, cls).skip_checks()
         if not CONF.share.run_mount_snapshot_tests:
             raise cls.skipException('Mountable snapshots tests are disabled.')
+        if (CONF.share.capability_snapshot_inherit_share_access ==
+                "required_with_mount_snapshot"):
+            raise cls.skipException(
+                "Independent snapshot access rules are disabled when "
+                "'snapshot_inherit_share_access_support' is required.")
         if not (cls.protocol in CONF.share.enable_protocols and
                 cls.protocol in CONF.share.enable_user_rules_for_protocols):
             msg = ("User rule tests for %s protocol are "
@@ -123,3 +134,46 @@ class ShareSnapshotUserRulesForCIFSTest(BaseShareSnapshotRulesTest):
     def test_create_delete_access_rules(self):
         access_to = CONF.share.username_for_user_rules
         self._test_create_delete_access_rules(access_to)
+
+
+class SnapshotInheritShareAccessTest(base.BaseSharesMixedTest):
+    protocol = "nfs"
+
+    @classmethod
+    def skip_checks(cls):
+        super(SnapshotInheritShareAccessTest, cls).skip_checks()
+        if not CONF.share.run_snapshot_tests:
+            raise cls.skipException('Snapshot tests are disabled.')
+        if not CONF.share.run_mount_snapshot_tests:
+            raise cls.skipException('Mountable snapshots tests are disabled.')
+        if CONF.share.capability_snapshot_inherit_share_access == "disabled":
+            raise cls.skipException(
+                "Backend does not support "
+                "snapshot_inherit_share_access_support.")
+        if cls.protocol not in CONF.share.enable_protocols:
+            raise cls.skipException(
+                "%s protocol is disabled." % cls.protocol)
+        utils.check_skip_if_microversion_not_supported(
+            constants.SNAPSHOT_INHERIT_SHARE_ACCESS_MICROVERSION)
+
+    @classmethod
+    def resource_setup(cls):
+        super(SnapshotInheritShareAccessTest, cls).resource_setup()
+        extra_specs = {
+            'snapshot_support': True,
+            'mount_snapshot_support': True,
+            'snapshot_inherit_share_access_support': True,
+        }
+        cls.share_type = cls.create_share_type(extra_specs=extra_specs)
+        cls.share = cls.create_share(cls.protocol,
+                                     share_type_id=cls.share_type['id'])
+
+    @decorators.idempotent_id('9a2f4ee1-1d16-4b1a-a5e6-2b0e18e4ac25')
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
+    def test_share_reports_snapshot_inherit_share_access_support(self):
+        share = self.shares_v2_client.get_share(
+            self.share['id'],
+            version=constants.SNAPSHOT_INHERIT_SHARE_ACCESS_MICROVERSION
+        )['share']
+
+        self.assertTrue(share['snapshot_inherit_share_access_support'])

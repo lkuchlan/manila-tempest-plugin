@@ -356,6 +356,9 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         # 2 - Create share S1, ok, created
         extra_specs = {'snapshot_support': True,
                        'mount_snapshot_support': True}
+        if (CONF.share.capability_snapshot_inherit_share_access ==
+                "required_with_mount_snapshot"):
+            extra_specs['snapshot_inherit_share_access_support'] = True
         parent_share = self.create_share(extra_specs=extra_specs)
         user_export_location = self.get_user_export_locations(parent_share)[0]
 

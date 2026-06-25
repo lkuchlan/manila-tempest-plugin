@@ -44,6 +44,9 @@ class ShareBackupNegativeTest(base.BaseSharesMixedTest):
             'snapshot_support': True,
             'mount_snapshot_support': True,
         }
+        if (CONF.share.capability_snapshot_inherit_share_access ==
+                "required_with_mount_snapshot"):
+            extra_specs['snapshot_inherit_share_access_support'] = True
         share_type = self.create_share_type(extra_specs=extra_specs)
         share = self.create_share(self.shares_v2_client.share_protocol,
                                   share_type_id=share_type['id'])

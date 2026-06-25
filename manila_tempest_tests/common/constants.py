@@ -72,6 +72,10 @@ SHARE_MIGRATION_PROGRESS_GET_VERSION = '2.98'
 # Revert to snapshot
 REVERT_TO_SNAPSHOT_MICROVERSION = '2.27'
 REVERT_TO_SNAPSHOT_SUPPORT = 'revert_to_snapshot_support'
+
+# Snapshot inherit share access
+SNAPSHOT_INHERIT_SHARE_ACCESS_MICROVERSION = '2.99'
+
 STATUS_RESTORING = 'restoring'
 STATUS_REVERTING = 'reverting'
 STATUS_REVERTING_ERROR = 'reverting_error'
