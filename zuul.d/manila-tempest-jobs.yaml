@@ -47,6 +47,16 @@
         MANILA_SHARE_MIGRATION_PERIOD_TASK_INTERVAL: 1
         MANILA_SERVER_MIGRATION_PERIOD_TASK_INTERVAL: 10
         MANILA_REPLICA_STATE_UPDATE_INTERVAL: 10
+        MANILA_SERVICE_IMAGE_URL: https://tarballs.opendev.org/openstack/manila-test-image/images/manila-test-image-client.qcow2
+        MANILA_SERVICE_IMAGE_NAME: manila-test-image-client
+      devstack_local_conf:
+        test-config:
+          $TEMPEST_CONFIG:
+            share:
+              image_with_share_tools: manila-test-image-client
+              client_vm_flavor_ref: c1
+              image_username: root
+              image_password: root
 
 - job:
     name: manila-tempest-plugin-ipv6-base
@@ -155,7 +165,6 @@
               multitenancy_enabled: False
               backend_names: LONDON,PARIS
               multi_backend: true
-              image_password: manila
               dd_input_file: /dev/urandom
 
 - job:
@@ -206,10 +215,6 @@
         MANILA_OPTGROUP_paris_driver_handles_share_servers: false
         SHARE_BACKING_FILE_SIZE: 32000M
         MANILA_SHARE_MIGRATION_PERIOD_TASK_INTERVAL: 1
-        # NOTE(carloss): Pin it temporarily until we can merge the enhancements
-        # for the manila-service-image: https://review.opendev.org/c/openstack/manila-tempest-plugin/+/996973
-        MANILA_SERVICE_IMAGE_URL: https://tarballs.opendev.org/openstack/manila-image-elements/images/manila-service-image-1.3.0-76-ga216835.qcow2
-        MANILA_SERVICE_IMAGE_NAME: manila-service-image-1.3.0-76-ga216835
         MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS: 'snapshot_support=True create_share_from_snapshot_support=True revert_to_snapshot_support=True mount_snapshot_support=True'
         MANILA_SETUP_IPV6: true
         NEUTRON_CREATE_INITIAL_NETWORKS: false
@@ -231,7 +236,6 @@
               multitenancy_enabled: False
               backend_names: LONDON,PARIS
               multi_backend: true
-              image_password: manila
 
 - job:
     name: manila-tempest-plugin-lvm
@@ -295,6 +299,8 @@
       # function properly in a small single node devstack VM.
       tempest_concurrency: 2
       devstack_localrc:
+        MANILA_SERVICE_IMAGE_URL: https://tarballs.opendev.org/openstack/manila-image-elements/images/manila-service-image-master.qcow2
+        MANILA_SERVICE_IMAGE_NAME: manila-service-image-master
         CINDER_QUOTA_VOLUMES: 50
         CINDER_QUOTA_SNAPSHOTS: 50
         VOLUME_BACKING_FILE_SIZE: 24G
@@ -322,6 +328,9 @@
               share_creation_retry_number: 2
               backend_names: LONDON,PARIS
               multi_backend: true
+              image_with_share_tools: manila-service-image-master
+              client_vm_flavor_ref: 100
+              image_username: manila
               image_password: manila
 
 - job:
@@ -365,6 +374,7 @@
       devstack_plugins:
         devstack-plugin-ceph: https://opendev.org/openstack/devstack-plugin-ceph
       tempest_test_regex: manila_tempest_tests.tests
+      tempest_exclude_regex: '(^manila_tempest_tests.tests.scenario.*ceph_fuse.*)'
       devstack_localrc:
         VOLUME_BACKING_FILE_SIZE: 60GB
         SHARE_DRIVER: manila.share.drivers.cephfs.driver.CephFSDriver
@@ -375,11 +385,6 @@
         MANILA_OPTGROUP_cephfsnative_driver_handles_share_servers: false
         MANILA_OPTGROUP_cephfsnative_cephfs_conf_path: /etc/ceph/ceph.conf
         MANILA_OPTGROUP_cephfsnative_cephfs_auth_id: manila
-        # NOTE(gouthamr): The following need to use the latest images, however, there's a bug
-        # with cephfs on Ubuntu 20.04 LTS: https://tracker.ceph.com/issues/47236
-        # the latest image is built as https://tarballs.opendev.org/openstack/manila-image-elements/images/manila-service-image-cephfs-master.qcow2
-        MANILA_SERVICE_IMAGE_URL: https://tarballs.opendev.org/openstack/manila-image-elements/images/manila-service-image-cephfs-1.3.0-58-g2859569.qcow2
-        MANILA_SERVICE_IMAGE_NAME: manila-service-image-cephfs-1.3.0-58-g2859569
       devstack_local_conf:
         post-config:
           $NOVA_CONF:
@@ -399,7 +404,6 @@
               backend_names: CEPHFSNATIVE
               capability_storage_protocol: CEPHFS
               enable_protocols: cephfs
-              image_password: manila
             compute-feature-enabled:
               share_attachments: true
               cold_migration: false
@@ -426,8 +430,6 @@
         TARGET_DEV_OSD_DIR: /opt/stack
         CEPH_LOOPBACK_DISK_SIZE: 80G
         DISABLE_CEPHADM_POST_DEPLOY: True
-        MANILA_SERVICE_IMAGE_URL: https://tarballs.opendev.org/openstack/manila-image-elements/images/manila-service-image-cephfs-master.qcow2
-        MANILA_SERVICE_IMAGE_NAME: manila-service-image-cephfs-master
       devstack_local_conf:
         test-config:
           $TEMPEST_CONFIG:
@@ -466,10 +468,6 @@
         ENABLED_SHARE_PROTOCOLS: NFS
         MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS: 'snapshot_support=True create_share_from_snapshot_support=True'
         MANILA_SERVICE_IMAGE_ENABLED: true
-        # NOTE(carloss): Pin it temporarily until we can merge the enhancements
-        # for the manila-service-image: https://review.opendev.org/c/openstack/manila-tempest-plugin/+/996973
-        MANILA_SERVICE_IMAGE_URL: https://tarballs.opendev.org/openstack/manila-image-elements/images/manila-service-image-1.3.0-76-ga216835.qcow2
-        MANILA_SERVICE_IMAGE_NAME: manila-service-image-1.3.0-76-ga216835
         MANILA_OPTGROUP_cephfsnfs_share_driver: manila.share.drivers.cephfs.driver.CephFSDriver
         MANILA_OPTGROUP_cephfsnfs_driver_handles_share_servers: false
         MANILA_OPTGROUP_cephfsnfs_cephfs_protocol_helper_type: NFS
@@ -493,7 +491,6 @@
               backend_names: CEPHFSNFS
               enable_protocols: nfs
               capability_storage_protocol: NFS
-              image_password: manila
 
 - job:
     name: manila-tempest-plugin-cephfs-nfs
@@ -543,6 +540,16 @@
         MANILA_SHARE_MIGRATION_PERIOD_TASK_INTERVAL: 1
         MANILA_SERVER_MIGRATION_PERIOD_TASK_INTERVAL: 10
         MANILA_REPLICA_STATE_UPDATE_INTERVAL: 10
+        MANILA_SERVICE_IMAGE_URL: https://tarballs.opendev.org/openstack/manila-test-image/images/manila-test-image-client.qcow2
+        MANILA_SERVICE_IMAGE_NAME: manila-test-image-client
+      devstack_local_conf:
+        test-config:
+          $TEMPEST_CONFIG:
+            share:
+              image_with_share_tools: manila-test-image-client
+              client_vm_flavor_ref: c1
+              image_username: root
+              image_password: root
     group-vars:
       tempest:
         devstack_plugins:
@@ -586,10 +593,6 @@
         MANILA_OPTGROUP_cephfsnfs_driver_handles_share_servers: false
         MANILA_OPTGROUP_cephfsnfs_share_driver: manila.share.drivers.cephfs.driver.CephFSDriver
         MANILA_SERVICE_IMAGE_ENABLED: True
-        # NOTE(carloss): Pin it temporarily until we can merge the enhancements
-        # for the manila-service-image: https://review.opendev.org/c/openstack/manila-tempest-plugin/+/996973
-        MANILA_SERVICE_IMAGE_URL: https://tarballs.opendev.org/openstack/manila-image-elements/images/manila-service-image-1.3.0-76-ga216835.qcow2
-        MANILA_SERVICE_IMAGE_NAME: manila-service-image-1.3.0-76-ga216835
         MANILA_SETUP_IPV6: true
         NEUTRON_CREATE_INITIAL_NETWORKS: false
         SHARE_DRIVER: manila.share.drivers.cephfs.driver.CephFSDriver
@@ -602,7 +605,6 @@
               capability_storage_protocol: NFS
               default_share_type_name: default
               enable_protocols: nfs
-              image_password: manila
               multitenancy_enabled: false
               run_ipv6_tests: true
               run_share_group_tests: false
