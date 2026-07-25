@@ -216,6 +216,28 @@ class SharesActionsNegativeTest(base.BaseSharesMixedTest):
 
         self.assertEqual(0, len(shares))
 
+    @decorators.idempotent_id('e4e17f46-3391-4e1e-8042-c60e9426db72')
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
+    @utils.skip_if_microversion_not_supported("2.97")
+    def test_list_shares_with_availability_zone_and_invalid_version(self):
+        # In API versions < v2.97, querying the share API by availability
+        # zone should have no effect. That filter was supported from v2.97
+        filters = {'availability_zone': 'fake_not_exist'}
+        shares = self.shares_v2_client.list_shares(
+            params=filters, version="2.96")['shares']
+
+        self.assertGreater(len(shares), 0)
+
+    @decorators.idempotent_id('7456fa28-9dc4-4859-8032-0fe0fb9f7cce')
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
+    @utils.skip_if_microversion_not_supported("2.97")
+    def test_list_shares_with_availability_zone_not_exist(self):
+        filters = {'availability_zone': 'fake_not_exist'}
+        shares = self.shares_v2_client.list_shares(
+            params=filters, version="2.97")['shares']
+
+        self.assertEqual(0, len(shares))
+
     @decorators.idempotent_id('3dbcf17b-cc63-43ea-b45f-eae12300729e')
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @utils.skip_if_microversion_not_supported("2.36")
