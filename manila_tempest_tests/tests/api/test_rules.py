@@ -484,6 +484,12 @@ class ShareRulesTest(base.BaseSharesMixedTest):
             utils.get_access_rule_data_from_config(
                 cls.shares_v2_client.share_protocol)
         )
+        # Some protocols return a secret in access_key on every rule (the
+        # cephx key, and the WEKAFS mount credential); others leave it
+        # unset. Assertions below key off this rather than access_type.
+        cls.access_key_expected = (
+            cls.access_type == 'cephx' or
+            cls.shares_v2_client.share_protocol.lower() == 'wekafs')
         cls.share_type = cls.create_share_type()
         cls.share_type_id = cls.share_type['id']
         cls.share = cls.create_share(share_type_id=cls.share_type_id)
@@ -549,7 +555,7 @@ class ShareRulesTest(base.BaseSharesMixedTest):
         self.assertEqual(self.access_to, rules[0]["access_to"])
         self.assertEqual('rw', rules[0]["access_level"])
         if utils.is_microversion_ge(version, '2.21'):
-            if self.access_type == 'cephx':
+            if self.access_key_expected:
                 self.assertIsNotNone(rules[0]['access_key'])
             else:
                 self.assertIsNone(rules[0]['access_key'])
@@ -597,7 +603,7 @@ class ShareRulesTest(base.BaseSharesMixedTest):
         self.assertEqual(
             expected_access_to,
             rule_lower_version_rules_api['access_to'])
-        if self.access_type == 'cephx':
+        if self.access_key_expected:
             self.assertEqual(expected_access_key,
                              rule_latest_rules_api['access_key'])
             self.assertEqual(
@@ -621,7 +627,7 @@ class ShareRulesTest(base.BaseSharesMixedTest):
 
         # ensure admin can see rules even if locked
         self.assertEqual(self.access_to, rules[0]["access_to"])
-        if self.access_type == 'cephx':
+        if self.access_key_expected:
             self.assertIsNotNone(rules[0]['access_key'])
             self.assertFalse(rules[0]['access_key'] == '******')
         else:
