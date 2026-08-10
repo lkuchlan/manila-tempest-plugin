@@ -174,6 +174,11 @@ class TestBaseShareExtendScenarioCEPHFS(manager.BaseShareScenarioCEPHFSTest,
               self).test_create_extend_and_write()
 
 
+class TestShareExtendLustre(manager.BaseShareScenarioLustreTest,
+                            ShareExtendBase):
+    pass
+
+
 class TestShareExtendNFSIPv6(TestShareExtendNFS):
     ip_version = 6
 

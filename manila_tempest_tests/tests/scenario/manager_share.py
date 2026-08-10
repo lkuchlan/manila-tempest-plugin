@@ -704,7 +704,7 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
             locations = self._get_snapshot_export_locations(snapshot)
 
         self.assertNotEmpty(locations)
-        if self.protocol != 'cephfs':
+        if self.protocol not in ('cephfs', 'lustre'):
             locations = self._get_export_locations_according_to_ip_version(
                 locations)
             self.assertNotEmpty(locations)
@@ -732,6 +732,9 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
             ip = export.split('\\')[2]
             version = 6 if (ip.count(':') > 1 or
                             ip.endswith('ipv6-literal.net')) else 4
+        elif self.protocol == 'lustre' and '@' in export:
+            ip = export.split('@')[0]
+            version = 4
         else:
             message = ("Protocol %s is not supported" % self.protocol)
             raise self.skipException(message)
@@ -988,3 +991,34 @@ class BaseShareScenarioCEPHFSTest(ShareScenarioTest):
                 "sudo fusermount -uz %s" % target_dir)
         super(BaseShareScenarioCEPHFSTest, self).unmount_share(
             remote_client, target_dir=target_dir)
+
+
+class BaseShareScenarioLustreTest(ShareScenarioTest):
+    protocol = "lustre"
+
+    @classmethod
+    def skip_checks(cls):
+        super(BaseShareScenarioLustreTest, cls).skip_checks()
+        if cls.protocol not in CONF.share.enable_ip_rules_for_protocols:
+            message = ("%s tests for access rules other than IP are disabled"
+                       % cls.protocol)
+            raise cls.skipException(message)
+
+    def allow_access(self, access_level='rw', **kwargs):
+        share = kwargs.get('share')
+        instance = kwargs['instance']
+        # Lustre nodemaps match by LNet NID (source IP seen by the
+        # server).  When the VM reaches the server through a Neutron
+        # router, the server sees the fixed IP, not the floating IP.
+        server_ip = self._get_server_ip(instance)
+        return self.allow_access_ip(
+            share['id'], ip=server_ip, instance=instance,
+            cleanup=False, access_level=access_level)
+
+    def mount_share(self, location, ssh_client, target_dir=None):
+        self.validate_ping_to_export_location(location, ssh_client)
+        ssh_client.exec_command("sudo modprobe lustre")
+        ssh_client.exec_command("sudo lctl network up")
+        target_dir = target_dir or "/mnt"
+        ssh_client.exec_command(
+            "sudo mount -t lustre \"%s\" %s" % (location, target_dir))

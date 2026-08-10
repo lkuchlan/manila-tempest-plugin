@@ -490,6 +490,49 @@ class TestShareBasicOpsNFSIPv6(TestShareBasicOpsNFS):
     ip_version = 6
 
 
+class TestShareBasicOpsLustre(manager.BaseShareScenarioLustreTest,
+                              ShareBasicOpsBase):
+
+    @decorators.idempotent_id('9e0ad912-93c5-4f8c-b9bd-3a5d70b302d9')
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_BACKEND)
+    def test_write_with_ro_access(self):
+        """Lustre override: unmount+remount after access level change.
+
+        Lustre nodemap changes only take effect on new client
+        connections.  The client must remount to pick up the
+        transition from RW to RO.
+        """
+        test_data = "Some test data to write"
+
+        instance = self.boot_instance(wait_until="BUILD")
+        share = self.create_share()
+        location = self.get_user_export_locations(share)[0]
+        instance = self.wait_for_active_instance(instance["id"])
+
+        remote_client_inst = self.init_remote_client(instance)
+
+        acc_rule_id = self.allow_access(
+            share=share, instance=instance, remote_client=remote_client_inst,
+            locations=location)['id']
+
+        self.mount_share(location, remote_client_inst)
+        self.write_data_to_mounted_share(test_data, remote_client_inst)
+
+        self.unmount_share(remote_client_inst)
+        self.deny_access(share['id'], acc_rule_id)
+
+        self.allow_access(share=share, instance=instance,
+                          remote_client=remote_client_inst, locations=location,
+                          access_level='ro')
+
+        self.mount_share(location, remote_client_inst)
+        self.addCleanup(self.unmount_share, remote_client_inst)
+
+        self.assertRaises(exceptions.SSHExecCommandFailed,
+                          self.write_data_to_mounted_share,
+                          test_data, remote_client_inst)
+
+
 # NOTE(u_glide): this function is required to exclude ShareBasicOpsBase from
 # executed test cases.
 # See: https://docs.python.org/3/library/unittest.html#load-tests-protocol

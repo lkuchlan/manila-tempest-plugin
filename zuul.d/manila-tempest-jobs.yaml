@@ -283,6 +283,93 @@
               run_network_allocation_update_tests: true
 
 - job:
+    name: manila-tempest-plugin-lustre
+    description: |
+      Test the Lustre share driver (DHSS=False) with the LUSTRE protocol.
+      API tests on Rocky Linux 9 with a loopback Lustre filesystem
+      provisioned by devstack-plugin-lustre.
+    parent: manila-tempest-plugin-base
+    nodeset: devstack-single-node-rockylinux-9
+    branches:
+      - master
+      - ^stable/2026\.2
+      - ^stable/202[7-9]
+      - ^stable/20[3-9]
+    required-projects:
+      - openstack/devstack-plugin-lustre
+    pre-run:
+      - playbooks/pre-lustre-kernel.yaml
+    vars:
+      tempest_test_regex: manila_tempest_tests.tests.api
+      tempest_concurrency: 8
+      devstack_plugins:
+        manila: https://opendev.org/openstack/manila
+        devstack-plugin-lustre: https://opendev.org/openstack/devstack-plugin-lustre
+      devstack_localrc:
+        PYTHON3_VERSION: '3.11'
+        LUSTRE_OST_SIZE: 100G
+        MANILA_SERVICE_IMAGE_ENABLED: false
+        ENABLED_SHARE_PROTOCOLS: LUSTRE
+        MANILA_ENABLED_BACKENDS: lustre1
+        MANILA_CONFIGURE_GROUPS: lustre1
+        MANILA_OPTGROUP_lustre1_share_driver: manila.share.drivers.lustre.driver.LustreShareDriver
+        MANILA_OPTGROUP_lustre1_driver_handles_share_servers: false
+        MANILA_OPTGROUP_lustre1_share_backend_name: LUSTRE1
+        MANILA_OPTGROUP_lustre1_lustre_fs_name: lustrefs
+        MANILA_OPTGROUP_lustre1_lustre_share_export_ip: "{{ hostvars[inventory_hostname]['nodepool']['private_ipv4'] }}"
+        MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS: ''
+      devstack_services:
+        cinder: false
+        s-account: false
+        s-container: false
+        s-object: false
+        s-proxy: false
+        horizon: false
+      devstack_local_conf:
+        test-config:
+          $TEMPEST_CONFIG:
+            share:
+              enable_protocols: lustre
+              enable_ip_rules_for_protocols: lustre
+              enable_ro_access_level_for_protocols: lustre
+              capability_storage_protocol: LUSTRE
+              multitenancy_enabled: false
+              run_ipv6_tests: false
+              run_manage_unmanage_tests: true
+              run_snapshot_tests: false
+              run_shrink_tests: true
+              run_extend_tests: true
+              run_mount_snapshot_tests: false
+              run_manage_unmanage_snapshot_tests: false
+              run_driver_assisted_migration_tests: false
+              image_with_share_tools: manila-service-image-lustre-master
+              image_password: manila
+
+- job:
+    name: manila-tempest-plugin-lustre-scenario
+    description: |
+      Scenario tests for the Lustre share driver (DHSS=False).
+      Boots VMs and mounts Lustre shares to verify end-to-end
+      read/write operations.
+    parent: manila-tempest-plugin-lustre
+    vars:
+      tempest_test_regex: '(^manila_tempest_tests.tests.scenario)(?=.*\[.*\bbackend\b.*\])'
+      tempest_concurrency: 1
+      devstack_localrc:
+        MANILA_SERVICE_IMAGE_ENABLED: true
+        MANILA_SERVICE_IMAGE_URL: "https://tarballs.opendev.org/openstack/manila-image-elements/images/manila-service-image-lustre-master.qcow2"
+        MANILA_SERVICE_IMAGE_NAME: manila-service-image-lustre-master
+      devstack_local_conf:
+        post-config:
+          $NOVA_CONF:
+            DEFAULT:
+              reserved_host_memory_mb: 0
+              ram_allocation_ratio: 1.0
+            libvirt:
+              file_backed_memory: 4096
+              mem_stats_period_s: 0
+
+- job:
     name: manila-tempest-plugin-generic-base
     abstract: true
     description: |
@@ -923,6 +1010,13 @@
             voting: false
         - manila-tempest-plugin-zfsonlinux:
             voting: false
+        - manila-tempest-plugin-lustre:
+            voting: false
+        - manila-tempest-plugin-lustre-scenario:
+            voting: false
+            files:
+              - ^manila/share/drivers/lustre/
+              - ^manila_tempest_tests/tests/scenario/
     gate:
       jobs:
         - manila-tempest-plugin-lvm
