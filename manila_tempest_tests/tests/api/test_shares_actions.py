@@ -451,6 +451,26 @@ class SharesActionsTest(base.BaseSharesMixedTest):
         shares = self.shares_v2_client.list_shares_with_detail(params)
         self.assertGreater(shares["count"], 0)
 
+    @decorators.idempotent_id('74f683c2-69c7-40c1-9ee9-598381eda4d8')
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
+    @utils.skip_if_microversion_not_supported("2.97")
+    @ddt.data(True, False)
+    def test_list_shares_filter_by_availability_zone(self, is_detail):
+        # list shares by availability zone, at least one share is expected
+        share = self.shares_v2_client.get_share(
+            self.shares[0]['id'], version="2.97")['share']
+        params = {'availability_zone': share['availability_zone']}
+        shares = self.shares_v2_client.list_shares(
+            detailed=is_detail, params=params, version="2.97")['shares']
+
+        self.assertGreater(len(shares), 0)
+        self.assertIn(self.shares[0]['id'], [s['id'] for s in shares])
+        if is_detail:
+            # the summary view doesn't contain the availability zone
+            for s in shares:
+                self.assertEqual(params['availability_zone'],
+                                 s['availability_zone'])
+
     @decorators.idempotent_id('174829eb-fd3e-46ef-880b-f05c3d44d1fe')
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
