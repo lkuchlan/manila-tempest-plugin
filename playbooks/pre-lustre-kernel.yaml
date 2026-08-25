@@ -1,0 +1,61 @@
+- hosts: all
+  become: true
+  vars:
+    lustre_repo_url: "{{ devstack_localrc.LUSTRE_REPO_URL | default('https://downloads.whamcloud.com/public/lustre/lustre-2.17.0/el9.7/server/') }}"
+  tasks:
+    - name: Add Whamcloud Lustre repo
+      ansible.builtin.yum_repository:
+        name: lustre-whamcloud
+        description: Lustre Server (Whamcloud)
+        baseurl: "{{ lustre_repo_url }}"
+        gpgcheck: false
+
+    - name: Add Whamcloud e2fsprogs repo
+      ansible.builtin.yum_repository:
+        name: lustre-e2fsprogs-whamcloud
+        description: e2fsprogs for Lustre (Whamcloud)
+        baseurl: https://downloads.whamcloud.com/public/e2fsprogs/latest/el9/
+        gpgcheck: false
+
+    - name: Refresh dnf cache
+      ansible.builtin.command: dnf makecache
+
+    - name: List available Lustre kernel packages
+      ansible.builtin.command: dnf list available 'kernel*lustre*'
+      register: lustre_pkgs
+      failed_when: false
+
+    - name: Show available Lustre kernel packages
+      ansible.builtin.debug:
+        var: lustre_pkgs.stdout_lines
+
+    - name: Install Lustre-patched kernel
+      ansible.builtin.shell:
+        cmd: dnf install -y --exclude='kernel-rt*' kernel-*_lustre*
+      register: kernel_install
+      changed_when: "'Complete!' in kernel_install.stdout"
+
+    - name: Find Lustre kernel vmlinuz
+      ansible.builtin.shell:
+        cmd: ls -1 /boot/vmlinuz-*_lustre* | head -1
+      register: lustre_vmlinuz
+      changed_when: false
+      failed_when: lustre_vmlinuz.rc != 0 or lustre_vmlinuz.stdout == ''
+
+    - name: Set Lustre kernel as default
+      ansible.builtin.command:
+        cmd: "grubby --set-default {{ lustre_vmlinuz.stdout }}"
+
+    - name: Reboot into Lustre kernel
+      ansible.builtin.reboot:
+
+    - name: Run post-reboot tasks
+      ansible.builtin.include_role:
+        name: post-reboot-tasks
+      vars:
+        nslookup_target: opendev.org
+
+    - name: Verify Lustre kernel is running
+      ansible.builtin.shell:
+        cmd: uname -r | grep -q _lustre
+      changed_when: false

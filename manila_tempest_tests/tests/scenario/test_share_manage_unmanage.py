@@ -198,6 +198,11 @@ class ShareManageUnmanageCIFS(manager.BaseShareScenarioCIFSTest,
     pass
 
 
+class ShareManageUnmanageLustre(manager.BaseShareScenarioLustreTest,
+                                ShareManageUnmanageBase):
+    pass
+
+
 class ShareManageUnmanageNFSIPv6(ShareManageUnmanageNFS):
     ip_version = 6
 

@@ -202,6 +202,37 @@ class ShareIpRulesForCIFSTest(ShareIpRulesForNFSTest):
 
 
 @ddt.ddt
+class ShareIpRulesForLUSTRETest(ShareIpRulesForNFSTest):
+    protocol = "lustre"
+
+    # The parent's skipIf decorators on these two methods hardcode "nfs"
+    # rather than using cls.protocol, so the inherited versions would
+    # check enable_ro_access_level_for_protocols for "nfs" instead of
+    # "lustre". Override to fix the skip condition.
+    @decorators.idempotent_id('506a0fe7-57dd-4f21-9223-ac3a620e73b6')
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
+    @testtools.skipIf(
+        "lustre" not in CONF.share.enable_ro_access_level_for_protocols,
+        "RO access rule tests are disabled for LUSTRE protocol.")
+    @ddt.data(*utils.deduplicate(['2.9', '2.27', '2.28',
+                                 LATEST_MICROVERSION]))
+    def test_create_delete_ro_access_rule(self, version):
+        _create_delete_ro_access_rule(self, version)
+
+    @utils.skip_if_microversion_not_supported('2.88')
+    @decorators.idempotent_id('0e3c10c7-f879-4249-bce4-df5e6868a2e8')
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
+    @testtools.skipIf(
+        "lustre" not in CONF.share.enable_ro_access_level_for_protocols,
+        "RO access rule tests are disabled for LUSTRE protocol.")
+    def test_update_access_rule(self):
+        super(
+            ShareIpRulesForLUSTRETest,
+            self
+        ).test_update_access_rule()
+
+
+@ddt.ddt
 class ShareUserRulesForNFSTest(base.BaseSharesMixedTest):
     protocol = "nfs"
 

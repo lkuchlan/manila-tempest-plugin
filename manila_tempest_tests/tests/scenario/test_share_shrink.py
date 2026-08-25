@@ -182,6 +182,11 @@ class TestBaseShareShrinkScenarioCEPHFS(manager.BaseShareScenarioCEPHFSTest,
               self).test_create_shrink_and_write()
 
 
+class TestShareShrinkLustre(manager.BaseShareScenarioLustreTest,
+                            ShareShrinkBase):
+    pass
+
+
 class TestShareShrinkNFSIPv6(TestShareShrinkNFS):
     ip_version = 6
 
