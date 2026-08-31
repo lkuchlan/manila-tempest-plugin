@@ -48,7 +48,7 @@ ShareGroup = [
                     "This value is only used to validate the versions "
                     "response from Manila."),
     cfg.StrOpt("max_api_microversion",
-               default="2.98",
+               default="2.99",
                help="The maximum api microversion is configured to be the "
                     "value of the latest microversion supported by Manila."),
     cfg.StrOpt("region",
@@ -144,6 +144,21 @@ ShareGroup = [
                      "Defaults to the value of run_snapshot_tests. Set it to "
                      "False if the driver being tested does not support "
                      "creating shares from snapshots."),
+    cfg.StrOpt("capability_snapshot_inherit_share_access",
+               default="disabled",
+               choices=["disabled", "optional",
+                        "required_with_mount_snapshot"],
+               help="Backend capability for "
+                    "'snapshot_inherit_share_access_support'. "
+                    "'disabled' means the backend does not support this "
+                    "capability. 'optional' means the backend supports it "
+                    "but does not require it for mountable snapshots. "
+                    "'required_with_mount_snapshot' means the backend "
+                    "requires 'snapshot_inherit_share_access_support' "
+                    "whenever 'mount_snapshot_support' is used; the extra "
+                    "spec will be added automatically and the API blocks "
+                    "independent snapshot access rule add/remove "
+                    "operations."),
     cfg.BoolOpt("capability_revert_to_snapshot_support",
                 deprecated_for_removal=True,
                 deprecated_reason="Redundant configuration option. Please use "
