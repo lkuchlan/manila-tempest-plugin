@@ -55,8 +55,8 @@
             share:
               image_with_share_tools: manila-test-image-client
               client_vm_flavor_ref: c1
-              image_username: root
-              image_password: root
+              image_username: manila
+              image_password: zorilla
 
 - job:
     name: manila-tempest-plugin-ipv6-base
@@ -635,8 +635,8 @@
             share:
               image_with_share_tools: manila-test-image-client
               client_vm_flavor_ref: c1
-              image_username: root
-              image_password: root
+              image_username: manila
+              image_password: zorilla
     group-vars:
       tempest:
         devstack_plugins:
